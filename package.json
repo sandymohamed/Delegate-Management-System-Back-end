@@ -1,0 +1,39 @@
+{
+  "name": "invoices_app_api",
+  "version": "1.0.0",
+  "description": "This is app for creating crud api using node, express and mysql",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon ./server.js"
+  },
+  "keywords": [
+    "nodejs",
+    "expressjs",
+    "mysql",
+    "api",
+    "restfulapi",
+    "javascript",
+    "es6"
+  ],
+  "author": "Sandy Mohammed",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.0.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql": "^2.17.1",
+    "mysql2": "^3.2.3",
+    "node-cron": "^3.0.2",
+    "node-ssh": "^13.2.0",
+    "pdfkit": "^0.12.1",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

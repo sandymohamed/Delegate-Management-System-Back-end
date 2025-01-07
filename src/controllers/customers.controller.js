@@ -52,8 +52,9 @@ const updateCustomer = async (req, res) => {
 
     try {
         const store_id = req.user.store_id;
+        const id = req.params.id;
 
-        const user = await Customer.update(req.params.id, req.body, store_id);
+        const user = await Customer.update(id, req.body, store_id);
         res.status(201).send(user);
     } catch (err) {
         res.status(500).send(err);
@@ -61,13 +62,14 @@ const updateCustomer = async (req, res) => {
 };
 
 const deleteCustomer = async (req, res) => {
-    console.log("req.params.id", req.params.id);
-
     try {
         const store_id = req.user.store_id;
-
-        await Customer.deleteById(req.params.id, store_id);
-        res.status(204).send();
+        const id = req.params.id;
+        console.log("store_id", store_id, id);
+        
+        const result =  await Customer.deleteById(id, store_id);
+        console.log("result fff", result);
+        res.status(201).send(result);
     } catch (err) {
         res.status(500).send(err);
     }

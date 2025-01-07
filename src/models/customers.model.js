@@ -25,7 +25,7 @@ const create = async (store_id, data) => {
     try {
         const sql = `INSERT INTO customers (store_id, name, email, phone, info, customer_store_name, location) VALUES (?, ?, ?, ?, ?, ?, ?)`;
         await db.query(sql, [store_id, data.name, data.email, data.phone, data.info, data.customer_store_name, data.location]);
-        return ({ message: 'Customer created successfully!' });
+        return ({ success: true, message: 'Customer created successfully!' });
     } catch (error) {
         console.log("error", error);
         return ({ error: error.message });
@@ -36,7 +36,13 @@ const update = async (id, data, store_id) => {
     try {
         const sql = 'UPDATE customers SET  name = ?, email = ?, phone = ?, info = ?, customer_store_name = ?, location = ? WHERE id = ? AND store_id = ?';
         const [result] = await db.query(sql, [data.name, data.email, data.phone, data.info, data.customer_store_name, data.location, id, store_id]);
-        return ({ message: 'Customer Updated successfully!', result });
+        console.log("result", result.affectedRows);
+
+        if (result.affectedRows === 0) {
+            return ({ success: false, error: 'Customer not found' });
+        }
+
+        return ({ success: true, message: 'Customer Updated successfully!', result });
     } catch (error) {
         res.status(500).send({ error: error.message });
     }
@@ -44,10 +50,20 @@ const update = async (id, data, store_id) => {
 
 const deleteById = async (id, store_id) => {
     const sql = `DELETE FROM customers WHERE store_id = ${store_id} AND id = ${id}`;
+    console.log("sql", sql);
+
     try {
         const [results] = await db.query(sql, [id]);
+        console.log("results", results);
+        
+        if (results.affectedRows === 0) {
+            console.log("affectedRows");
+            return ({ success: false, error: 'Customer not found' });
+        }
         return ({ success: true, results });
     } catch (error) {
+        console.log("error", error);
+
         return ({ success: false, error: error.message });
     }
 };

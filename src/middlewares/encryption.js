@@ -16,12 +16,10 @@ const encrypt = (data) => {
 
 const decrypt = (encryptedData) => {
     try {
-        console.log("algorithm, key", algorithm, key);
-        
+
         var decipher = crypto.createDecipher(algorithm, key);
         var decrypted = decipher.update(encryptedData, 'hex', 'utf8')
         decrypted += decipher.final('utf8');
-        console.log("decrypted", decrypted);
 
         return { decrypted };
     } catch (err) {

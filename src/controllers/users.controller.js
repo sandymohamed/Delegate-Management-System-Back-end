@@ -22,11 +22,9 @@ const getUserById = async (req, res, next) => {
         const id = req.params.id;
         const store_id = req.user.store_id;
         const user = await User.findById(id, store_id);
-        console.log("user", user);
 
         if (user) {
             res.locals.data = user;
-            console.log(" res.locals.data", res.locals.data);
             next();
         }
         else res.status(404).send('User not found');
@@ -63,13 +61,11 @@ const updateUser = async (req, res) => {
 };
 
 const deleteUser = async (req, res) => {
-    console.log("req.params.id", req.params.id);
-
     try {
         const store_id = req.user.store_id;
 
-        await User.deleteById(req.params.id, store_id);
-        res.status(204).send();
+        const result = await User.deleteById(req.params.id, store_id);
+        res.status(200).send(result);
     } catch (err) {
         res.status(500).send(err);
     }

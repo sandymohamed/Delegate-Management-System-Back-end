@@ -24,10 +24,14 @@ const findById = async (id, store_id) => {
 const create = async (store_id, user) => {
     try {
         const sql = `INSERT INTO users (store_id, name, email, password, phone, role) VALUES (?,?, ?, ?, ?, ?)`;
-        await db.query(sql, [store_id, user.name, user.email, user.password, user.phone, user.role]);
-        return ({ message: 'User created successfully!' });
+        const [results] = await db.query(sql, [store_id, user.name, user.email, user.password, user.phone, user.role]);
+
+        if (results.affectedRows === 0) {
+            return ({ success: false, error: 'Customer not found' });
+        }
+
+        return ({ success: true, message: 'User created successfully!' });
     } catch (error) {
-        console.log("error", error);
         return ({ error: error.message });
     }
 };
@@ -37,7 +41,11 @@ const update = async (id, user, store_id) => {
         const sql = 'UPDATE users SET  name = ?, email = ?, phone = ?, password = ?, role = ? WHERE id = ? AND store_id = ?';
         const [result] = await db.query(sql, [user.name, user.email, user.phone, user.password, user.role, id, store_id]);
 
-        return ({ message: 'User Updated successfully!', result });
+        if (result.affectedRows === 0) {
+            return ({ success: false, error: 'Customer not found' });
+        }
+
+        return ({ success: true, message: 'User Updated successfully!', result });
     } catch (error) {
         res.status(500).send({ error: error.message });
     }
@@ -45,10 +53,17 @@ const update = async (id, user, store_id) => {
 
 const deleteById = async (id, store_id) => {
     const sql = `DELETE FROM users WHERE store_id = ${store_id} AND id = ${id}`;
+    console.log("sql", sql);
     try {
-        const [results] = await db.query(sql, [id]);
+        const [results] = await db.query(sql);
+        console.log("results", results);
+        if (results.affectedRows === 0) {
+            return ({ success: false, error: 'Customer not found' });
+        }
         return ({ success: true, results });
     } catch (error) {
+        console.log("error", error);
+
         return ({ success: false, error: error.message });
     }
 };

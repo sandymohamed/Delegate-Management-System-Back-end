@@ -18,6 +18,6 @@ db.connect(err => {
     console.log('Connected to MySQL');
 });
 
-const dbPromise = db.promise(); // Add this to enable promise-based queries
+const dbPromise = db.promise(); 
 
 module.exports = dbPromise;

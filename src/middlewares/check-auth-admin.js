@@ -32,6 +32,14 @@ module.exports = async (req, res, next) => {
         // Verify the token
         try {
             req.user = jwt.verify(token, secret);
+
+            if(req.user.role !== 'admin'){
+                return res.status(401).json({
+                    success: false,
+                    result: "You are not authorized to access this resource"
+                });
+            }
+
             next();
         } catch (error) {
             console.error("JWT verification failed:", error.message);

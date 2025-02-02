@@ -1,11 +1,39 @@
+const { parse } = require('dotenv');
 const db = require('../../config/db.config');
 
-
-const findAll = async (store_id) => {
-    const sql = `SELECT * FROM customers WHERE store_id = ${store_id}`;
+const findAll = async (store_id, searchTerm, limit, page) => {
     try {
-        const [results] = await db.query(sql);
-        return results;
+        limit = parseInt(limit) || 100;
+        const offset = (parseInt(page) - 1) * limit;
+        // Construct search query
+        const searchTermQuery = searchTerm
+            ? `AND (customers.name LIKE ? OR
+           customers.customer_store_name LIKE ? OR
+           customers.phone LIKE ? OR
+           customers.location LIKE ? OR
+           customers.total_unpaid_invoices LIKE ? 
+                  )`
+            : "";
+
+        const sql = `SELECT * FROM customers WHERE store_id = ? ${searchTermQuery} LIMIT ? OFFSET ?`;
+
+        const searchValues = searchTerm ? Array(5).fill(`%${searchTerm}%`) : [];
+
+        console.log("searchValues", searchValues);
+
+        const [results] = await db.query(sql, [store_id, ...searchValues, limit, offset]);
+
+        const countQuery = `SELECT COUNT(*) AS count FROM customers WHERE store_id = ? ${searchTermQuery}`;
+        const [countResult] = await db.query(countQuery, [store_id, ...searchValues]);
+        const totalCount = countResult[0].count;
+
+        return {
+            success: true,
+            total: totalCount,
+            limit,
+            page,
+            data: results,
+        };
     } catch (error) {
         throw new Error(`Database Error: ${error.message}`);
     }
@@ -24,11 +52,16 @@ const findById = async (id, store_id) => {
 const create = async (store_id, data) => {
     try {
         const sql = `INSERT INTO customers (store_id, name, email, phone, info, customer_store_name, location) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-        await db.query(sql, [store_id, data.name, data.email, data.phone, data.info, data.customer_store_name, data.location]);
-        return ({ success: true, message: 'Customer created successfully!' });
+        const [results] = await db.query(sql, [store_id, data.name, data.email, data.phone, data.info, data.customer_store_name, data.location]);
+        if (results.affectedRows === 0) {
+            return ({ success: false, error: 'Something went wrong!' });
+        }
+
+        return results;
     } catch (error) {
         console.log("error", error);
-        return ({ error: error.message });
+        
+        throw new Error(`Database Error: ${error.message}`);
     }
 };
 
@@ -55,7 +88,7 @@ const deleteById = async (id, store_id) => {
     try {
         const [results] = await db.query(sql, [id]);
         console.log("results", results);
-        
+
         if (results.affectedRows === 0) {
             console.log("affectedRows");
             return ({ success: false, error: 'Customer not found' });

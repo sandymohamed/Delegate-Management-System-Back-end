@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 require('dotenv').config();
 
-const algorithm =  process.env.ALGORITHM;
+const algorithm = process.env.ALGORITHM;
 const key = process.env.KEY;
 
 // Encrypt a string
@@ -30,5 +30,24 @@ const decrypt = (encryptedData) => {
 
 
 
+const hashPassword = (password) => {
+    const salt = process.env.SALT1;
+    const salt2 = process.env.SALT2;
 
-module.exports = { encrypt, decrypt };
+    const hash = crypto.createHash('sha1')
+        .update(password + salt)
+        .digest('hex');
+
+    const hash2 = crypto.createHash('sha1')
+        .update(hash + salt2)
+        .digest('hex');
+
+    return hash2;
+
+
+};
+
+
+
+
+module.exports = { encrypt, decrypt, hashPassword };

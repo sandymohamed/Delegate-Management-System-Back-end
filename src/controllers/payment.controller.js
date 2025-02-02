@@ -5,9 +5,7 @@ const addPayment = (req, res) => {
     const { invoice_id, store_id, amount } = req.body;
 
     try {
-
         const paymentData = paymentModel.addPayment(invoice_id, store_id, amount);
-
 
         if (!paymentData) return res.status(500).json({ success: false, error: "Error: Something went wrong!" });
 

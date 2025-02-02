@@ -4,12 +4,14 @@ const hashPII = (req, res, next) => {
 
     const piiFields = ['name', 'email', 'phone'];
     req.body = { ...req.body };
-    console.log("req.body hashPII: ", req.body);
     const phoneRegex = /^[0-9]{7,15}$/;
-    
+
+    if (req.body.phone) {
+
         if (!phoneRegex.test(req.body.phone)) {
             return res.status(400).json({ error: 'Invalid phone number format.' });
         }
+    }
 
     piiFields.forEach((field) => {
         if (req.body[field]) {

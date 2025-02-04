@@ -28,7 +28,6 @@ const getVanByAgent = async (req, res) => {
     try {
     const store_id = req.user.store_id;
     const { user_id } = req.params;
-    console.log("user_id", user_id, store_id);
     
         const resultData = await vanModel.getVanByAgent(store_id, user_id);
         res.json({ success: true, data: resultData });

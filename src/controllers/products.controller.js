@@ -1,33 +1,37 @@
 const { hashPassword } = require('../middlewares/encryption');
 const Product = require('../models/products.model');
 
-const getAllUsers = async (req, res) => {
+
+
+const getAllProducts = async (req, res) => {
     try {
         const store_id = req.user.store_id;
 
-        const users = await Product.findAll(store_id);
-        res.json({ success: true, data: users, });
+        const { searchTerm, limit, page } = req.body;
+
+        const products = await Product.findAll(store_id, searchTerm, limit, page);
+        res.json({ success: true, data: products, });
 
     } catch (error) {
-        console.error("[ERROR] Failed to fetch users:", error.message);
+        console.error("[ERROR] Failed to fetch products:", error.message);
 
         res.status(500).json({
             success: false,
-            error: "Failed to fetch users. Please try again later."
+            error: "Failed to fetch products. Please try again later, error.message"
         });
     }
 };
 
-const getUserById = async (req, res, next) => {
+const getProductById = async (req, res, next) => {
     try {
         const id = req.params.id;
         const store_id = req.user.store_id;
-        const user = await Product.findById(id, store_id);
+        const product = await Product.findById(id, store_id);
 
-        if (user) {
-            // res.locals.data = user;
+        if (product) {
+            // res.locals.data = product;
             // next();
-            res.json({ success: true, data: user, });
+            res.json({ success: true, data: product, });
         }
 
         else res.status(404).send('User not found');
@@ -39,12 +43,12 @@ const getUserById = async (req, res, next) => {
 };
 
 
-const createUser = async (req, res) => {
+const createProduct = async (req, res) => {
     try {
         req.body.password = hashPassword(req.body.password);
         const store_id = req.user.store_id;
-        const user = await Product.create(store_id, req.body);
-        res.status(201).json(user);
+        const products = await Product.create(store_id, req.body);
+        res.status(201).json({ success: true, message: " created successfully" });
     } catch (err) {
         res.status(500).send(err);
     }
@@ -52,19 +56,18 @@ const createUser = async (req, res) => {
 
 
 
-const updateUser = async (req, res) => {
+const updateProduct = async (req, res) => {
 
     try {
         const store_id = req.user.store_id;
-
-        const user = await Product.update(req.params.id, req.body, store_id);
-        res.status(204).send(user);
+        const product = await Product.update(req.params.id, req.body, store_id);
+        res.status(204).json({ success: true, message: " update successfully" });
     } catch (err) {
         res.status(500).send(err);
     }
 };
 
-const deleteUser = async (req, res) => {
+const deleteProduct = async (req, res) => {
     try {
         const store_id = req.user.store_id;
 
@@ -75,4 +78,4 @@ const deleteUser = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, createUser, getUserById, updateUser, deleteUser };
+module.exports = { getAllProducts, createProduct, getProductById, updateProduct, deleteProduct };

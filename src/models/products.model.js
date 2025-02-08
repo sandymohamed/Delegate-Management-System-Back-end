@@ -4,8 +4,8 @@ const db = require('../../config/db.config');
 const findAll = async (store_id, searchTerm, limit, page) => {
 
     try {
-    const offset = (page - 1) * limit;
-    const searchTermCondition = searchTerm ? `
+        const offset = (page - 1) * limit;
+        const searchTermCondition = searchTerm ? `
     AND name LIKE '%${searchTerm}%' OR 
     qr_code LIKE '%${searchTerm}%' OR
     description LIKE '%${searchTerm}%' OR 
@@ -14,14 +14,26 @@ const findAll = async (store_id, searchTerm, limit, page) => {
     exp_date LIKE '%${searchTerm}%'  
     ` : '';
 
-    const sql = `SELECT * FROM products WHERE store_id = ${store_id} ${searchTermCondition} `;
+        let sql = `SELECT * FROM products WHERE store_id = ${store_id} ${searchTermCondition} `;
 
-    if(limit) {
-        sql += `LIMIT ${limit} OFFSET ${offset}`;
-    }
-    
+        if (limit) {
+            sql += `LIMIT ${limit} OFFSET ${offset}`;
+        }
+
         const [results] = await db.query(sql);
-        return results;
+
+
+        let countQuery = `SELECT COUNT(*) FROM products WHERE store_id = ${store_id} ${searchTermCondition} `;
+
+        const [resultsCountQuery] = await db.query(countQuery);
+
+        return {
+            success: true,
+            total: resultsCountQuery[0]['COUNT(*)'],
+            limit,
+            page,
+            data: results,
+        }
     } catch (error) {
         throw new Error(`Database Error: ${error.message}`);
     }
@@ -51,7 +63,7 @@ exp_date timestamp
 const create = async (store_id, product) => {
     try {
         const sql = `INSERT INTO products (store_id, name, price, description, qr_code, stock_quantity, exp_date) VALUES (?,?, ?, ?, ?, ?, ?)`;
-        const [results] = await db.query(sql, [store_id, product.name, product.price, product.description, product.qr_code, product.stock_quantity, product.exp_date ]);
+        const [results] = await db.query(sql, [store_id, product.name, product.price, product.description, product.qr_code, product.stock_quantity, product.exp_date]);
 
         if (results.affectedRows === 0) {
             return ({ success: false, error: 'Customer not found' });

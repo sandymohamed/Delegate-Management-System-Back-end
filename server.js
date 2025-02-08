@@ -48,4 +48,7 @@ app.use('/products', productsRoutes);
 app.get('/', (req, res) => res.send('Hello World!'));
 
 
-app.listen(port, () => console.log(`Example app listening at http://localhost:8800`))
+app.listen(port, () => console.log(`Example app listening at http://localhost:8800`));
+
+
+

@@ -1,14 +1,13 @@
 const express = require('express');
 const router = express.Router();
-
+const checkAuth = require('../middlewares/check-auth');
+const checkAuthAdmin = require('../middlewares/check-auth-admin');
 const { getAllCustomers, createCustomer, getCustomerById, updateCustomer, deleteCustomer } = require('../controllers/customers.controller');
 
 // const hashPII = require('../middlewares/hashPII');
 // const unhashPII = require('../middlewares/unhashPII');
 const validateStoreId = require('../middlewares/validateStoreId');
-// TODO: add checkAuthAdmin middleware
-const checkAuth = require('../middlewares/check-auth');
-const checkAuthAdmin = require('../middlewares/check-auth-admin');
+
 
 
 // router.get('/', checkAuth, getAllCustomers, unhashPII, (req, res) => {
@@ -27,6 +26,7 @@ const checkAuthAdmin = require('../middlewares/check-auth-admin');
 // router.post('/', checkAuth, validateStoreId, hashPII, createCustomer);
 
 router.post('/create', checkAuth,createCustomer);
+router.get('/', checkAuth, getAllCustomers);
 router.post('/', checkAuth, getAllCustomers);
 router.get('/:id', checkAuth, getCustomerById);
 router.put('/:id', checkAuth,updateCustomer);

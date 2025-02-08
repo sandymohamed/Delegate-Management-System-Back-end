@@ -70,12 +70,13 @@ const getAllProductsInVan = async (van_id) => {
     }
 };
 
+
 // Update product quantity in daily inventory
 const updateDailyInventory = async (inventory_id, quantity, user_id) => {
     try {
 
         const query = `UPDATE daily_inventory SET quantity = ?, user_id = ? WHERE id = ?`;
-        const [results] = await db.query(query, [quantity, inventory_id]);
+        const [results] = await db.query(query, [quantity,user_id, inventory_id]);
         console.log("response in updateDailyInventory", results);
 
         if (results.affectedRows === 0) {

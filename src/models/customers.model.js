@@ -3,7 +3,7 @@ const db = require('../../config/db.config');
 
 const findAll = async (store_id, searchTerm, limit, page) => {
     try {
-        limit = parseInt(limit) || 100;
+        // limit = parseInt(limit) || 100;
         const offset = (parseInt(page) - 1) * limit;
         // Construct search query
         const searchTermQuery = searchTerm
@@ -15,8 +15,11 @@ const findAll = async (store_id, searchTerm, limit, page) => {
                   )`
             : "";
 
-        const sql = `SELECT * FROM customers WHERE store_id = ? ${searchTermQuery} LIMIT ? OFFSET ?`;
+        let sql = `SELECT * FROM customers WHERE store_id = ? ${searchTermQuery}`;
 
+        if(limit) {
+            sql += ` LIMIT ? OFFSET ?`;
+        }
         const searchValues = searchTerm ? Array(5).fill(`%${searchTerm}%`) : [];
 
         console.log("searchValues", searchValues);

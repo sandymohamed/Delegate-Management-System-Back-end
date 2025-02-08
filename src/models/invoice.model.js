@@ -11,30 +11,46 @@ const createInvoice = async (store_id, agent_id, customer_id, invoice_number, du
         `;
         const values = [store_id, agent_id, customer_id, invoice_number, due_date, total_price, discount, total_after_discount];
 
+        console.log("createInvoice1",query, values);
+        
         const [results] = await db.query(query, values)
-
+        
         if (results.affectedRows === 0) {
             return ({ success: false, error: 'Something went wrong!' });
         }
-
+        
         const invoiceId = results.insertId;
-
+        
+        console.log("createInvoice invoiceId : ", invoiceId);
+        
         if (!invoice_number) {
             const invoiceNumberQuery = `
-                UPDATE invoices
-                SET invoice_number = ?
-                WHERE id = ?;
+            UPDATE invoices
+            SET invoice_number = ?
+            WHERE id = ?;
             `;
             await db.query(invoiceNumberQuery, [invoiceId, invoiceId]);
         }
-
-        // Update the customer's total_unpaid_invoices
-        const updateCustomerQuery = `
-           UPDATE customers
-           SET total_unpaid_invoices = total_unpaid_invoices + ?
-           WHERE id = ?;
-       `;
-        await db.query(updateCustomerQuery, [total_after_discount, customer_id]);
+        
+    //     // 🔴 🔴 Prevent Duplicate Increment of total_unpaid_invoices 🔴 🔴
+    //     const checkCustomerQuery = `
+    //     SELECT total_unpaid_invoices FROM customers WHERE id = ?;
+    //     `;
+    //     const [customer] = await db.query(checkCustomerQuery, [customer_id]);
+        
+    //     console.log("createInvoice customer : ", customer);
+        
+    //     if (customer.length > 0) {
+    //         // Update the customer's total_unpaid_invoices
+    //         const updateCustomerQuery = `
+    //         UPDATE customers
+    //         SET total_unpaid_invoices = total_unpaid_invoices + ?
+    //         WHERE id = ?;
+    //   `;
+    //   await db.query(updateCustomerQuery, [total_after_discount, customer_id]);
+    // }
+    
+    // console.log("createInvoice2",updateCustomerQuery, total_after_discount, customer_id);
         return invoiceId;
 
     } catch (error) {
@@ -282,6 +298,42 @@ Where ( i.store_id = ? AND i.customer_id = ?);`;
         throw new Error(`Database Error: ${error.message}`);
     }
 }
+// get all unpaid invoices By customer
+const getAllUnpaidInvoicesByCustomer = async (store_id, customer_id) => {
+    try {
+        const query =
+            `SELECT 
+    i.id, i.store_id, i.agent_id, i.customer_id, i.invoice_number, 
+    i.invoice_date, i.due_date, i.total_price, i.discount, 
+    i.total_after_discount, i.is_paid, i.total_paid, i.total_unpaid,
+    COALESCE(
+        JSON_ARRAYAGG(
+            JSON_OBJECT(
+                'product_id', s.product_id,
+                'quantity', s.quantity,
+                'price', s.price,
+                'product_total_price', s.total_price
+            )
+        ), JSON_ARRAY()
+    ) AS products
+FROM invoices i 
+LEFT JOIN sales s ON (i.id = s.invoice_id )
+Where ( i.store_id = ? AND i.customer_id = ? AND i.is_paid = 0)
+GROUP BY i.id
+ORDER BY i.total_unpaid DESC
+;`;
+        const [results] = await db.query(query, [store_id, customer_id]);
+
+        if (results.affectedRows === 0) {
+            return ({ success: false, error: 'Something went wrong!' });
+        }
+
+        return results;
+
+    } catch (error) {
+        throw new Error(`Database Error: ${error.message}`);
+    }
+}
 
 // Get invoice details
 const getInvoiceDetails = async (store_id, invoice_id) => {
@@ -292,6 +344,7 @@ const getInvoiceDetails = async (store_id, invoice_id) => {
      c.customer_store_name,
      c.phone AS customer_phone,
      c.location AS customer_location,
+     c.total_unpaid_invoices AS customer_total_unpaid_invoices,
     COALESCE(
         JSON_ARRAYAGG(
             JSON_OBJECT(
@@ -329,4 +382,5 @@ module.exports = {
     getInvoiceDetails,
     getAllInvoicesByAgent,
     getAllInvoicesByCustomer,
+    getAllUnpaidInvoicesByCustomer,
 };

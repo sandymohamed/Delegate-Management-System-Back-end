@@ -9,7 +9,7 @@ const addDailyInventory = async (req, res) => {
     if(!date) date  = new Date().toISOString().split('T')[0];
     console.log("date", date);
 
-        const resultData = await dailyInventoryModel.addDailyInventory(van_id, products, date, id);
+        const resultData = await dailyInventoryModel.addDailyInventory(van_id, products,date, id);
         res.status(201).json({ success: true, message: 'Daily inventory added successfully', result: resultData.insertId });
     } catch (error) {
         console.log("Error in addDailyInventory controller:", error);

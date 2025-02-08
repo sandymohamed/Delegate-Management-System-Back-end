@@ -1,12 +1,13 @@
 const { off } = require('pdfkit');
 const invoiceModel = require('../models/invoice.model');
+const dailyInventoryModel = require('../models/dailyInventory.model');
 
 // Create a new invoice
 const createInvoice = async (req, res) => {
 
     const { store_id, id, } = req.user;
 
-    const { customer_id, invoice_number, due_date = new Date(), discount, products } = req.body;
+    const { customer_id, invoice_number, due_date = new Date(), discount, products, van_id } = req.body;
 
     // Calculate total price
     let total_price = products?.reduce((sum, product) => sum + (product.quantity * product.price), 0);
@@ -18,10 +19,19 @@ const createInvoice = async (req, res) => {
         if (!invoice_id) return res.status(500).json({ success: false, error: "something went wrong!" });
         // Add products to the invoice
         const salesQueries = await products.map(product => {
-            const salesData = invoiceModel.addSales(invoice_id, store_id, product.product_id, product.quantity, product.price)
+            const salesData = invoiceModel.addSales(invoice_id, store_id, product.product_id, product.quantity, product.price)           
             if (!salesData) return res.status(500).json({ success: false, error: salesData });
         });
 
+        products.forEach(async (product) => {
+            product.quantity = product.quantity * -1;
+        })
+      date  = new Date().toISOString().split('T')[0];
+
+        console.log("products", products);
+               const resultData = await dailyInventoryModel.addDailyInventory(van_id, products, date, id);
+       
+        
         // TODO: Add payment details
         res.json({ success: true, message: 'Invoice created successfully', invoice_id });
 
@@ -85,6 +95,7 @@ const getInvoiceDetails = async (req, res) => {
     const { store_id } = req.user;
 
     const { invoice_id } = req.params;
+    if (!invoice_id) return res.status(400).json({ success: false, error: "Invoice ID is required" });
     try {
         const rows = await invoiceModel.getInvoiceDetails(store_id, invoice_id);
 

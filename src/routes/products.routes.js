@@ -8,6 +8,7 @@ const checkAuth = require('../middlewares/check-auth');
 
 // const checkAuthAdmin = require('../middlewares/check-auth-admin');
 
+
 router.post('/create', checkAuth, createProduct);
 router.post('/', checkAuth, getAllProducts);
 router.get('/:id', checkAuth, getProductById);
@@ -15,3 +16,4 @@ router.put('/:id', checkAuth, validateStoreId, updateProduct);
 router.delete('/:id', checkAuth, deleteProduct);
 
 module.exports = router;
+

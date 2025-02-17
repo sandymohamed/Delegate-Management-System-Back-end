@@ -10,8 +10,6 @@ const createInvoice = async (store_id, agent_id, customer_id, invoice_number, du
             VALUES (?, ?, ?, ?, ?, ?, ? ,?)
         `;
         const values = [store_id, agent_id, customer_id, invoice_number, due_date, total_price, discount, total_after_discount];
-
-        console.log("createInvoice1",query, values);
         
         const [results] = await db.query(query, values)
         
@@ -20,9 +18,7 @@ const createInvoice = async (store_id, agent_id, customer_id, invoice_number, du
         }
         
         const invoiceId = results.insertId;
-        
-        console.log("createInvoice invoiceId : ", invoiceId);
-        
+                
         if (!invoice_number) {
             const invoiceNumberQuery = `
             UPDATE invoices
@@ -32,26 +28,7 @@ const createInvoice = async (store_id, agent_id, customer_id, invoice_number, du
             await db.query(invoiceNumberQuery, [invoiceId, invoiceId]);
         }
         
-    //     // 🔴 🔴 Prevent Duplicate Increment of total_unpaid_invoices 🔴 🔴
-    //     const checkCustomerQuery = `
-    //     SELECT total_unpaid_invoices FROM customers WHERE id = ?;
-    //     `;
-    //     const [customer] = await db.query(checkCustomerQuery, [customer_id]);
-        
-    //     console.log("createInvoice customer : ", customer);
-        
-    //     if (customer.length > 0) {
-    //         // Update the customer's total_unpaid_invoices
-    //         const updateCustomerQuery = `
-    //         UPDATE customers
-    //         SET total_unpaid_invoices = total_unpaid_invoices + ?
-    //         WHERE id = ?;
-    //   `;
-    //   await db.query(updateCustomerQuery, [total_after_discount, customer_id]);
-    // }
-    
-    // console.log("createInvoice2",updateCustomerQuery, total_after_discount, customer_id);
-        return invoiceId;
+    return invoiceId;
 
     } catch (error) {
         throw new Error(`Database Error: ${error.message}`);
@@ -106,10 +83,6 @@ const getAllInvoices = async (store_id) => {
 FROM invoices i
 LEFT JOIN sales s ON (i.id = s.invoice_id AND i.store_id = ?)
 GROUP BY i.id;`;
-        //     `
-        // SELECT i.* , s.product_id, s.quantity, s.price, s.total_price AS product_total_price
-        // FROM invoices i 
-        // LEFT JOIN sales s ON (i.id = s.invoice_id AND i.store_id = ?)`;
 
         const [results] = await db.query(query, [store_id]);
 
@@ -320,7 +293,7 @@ FROM invoices i
 LEFT JOIN sales s ON (i.id = s.invoice_id )
 Where ( i.store_id = ? AND i.customer_id = ? AND i.is_paid = 0)
 GROUP BY i.id
-ORDER BY i.total_unpaid DESC
+ORDER BY i.total_unpaid ASC
 ;`;
         const [results] = await db.query(query, [store_id, customer_id]);
 

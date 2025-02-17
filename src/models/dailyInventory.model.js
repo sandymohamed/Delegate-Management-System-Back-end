@@ -18,7 +18,6 @@ const addDailyInventory = async (van_id, products, date, user_id) => {
         console.log("error in addDailyInventory", error);
         throw error;
     }
-
 }
 // Get daily inventory for a van on a specific date
 const getDailyInventoryByVan = async (van_id, date) => {

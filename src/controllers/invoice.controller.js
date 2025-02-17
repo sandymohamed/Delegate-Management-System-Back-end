@@ -9,6 +9,8 @@ const createInvoice = async (req, res) => {
 
     const { customer_id, invoice_number, due_date = new Date(), discount, products, van_id } = req.body;
 
+    console.log("products", products);
+    
     // Calculate total price
     let total_price = products?.reduce((sum, product) => sum + (product.quantity * product.price), 0);
     let total_after_discount = total_price - discount;
@@ -18,7 +20,7 @@ const createInvoice = async (req, res) => {
 
         if (!invoice_id) return res.status(500).json({ success: false, error: "something went wrong!" });
         // Add products to the invoice
-        const salesQueries = await products.map(product => {
+       await products.map(product => {
             const salesData = invoiceModel.addSales(invoice_id, store_id, product.product_id, product.quantity, product.price)           
             if (!salesData) return res.status(500).json({ success: false, error: salesData });
         });
@@ -27,9 +29,7 @@ const createInvoice = async (req, res) => {
             product.quantity = product.quantity * -1;
         })
       date  = new Date().toISOString().split('T')[0];
-
-        console.log("products", products);
-               const resultData = await dailyInventoryModel.addDailyInventory(van_id, products, date, id);
+              await dailyInventoryModel.addDailyInventory(van_id, products, date, id);
        
         
         // TODO: Add payment details

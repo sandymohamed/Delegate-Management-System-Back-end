@@ -17,7 +17,7 @@ const findAll = async (store_id, searchTerm, limit, page) => {
 
         let sql = `SELECT * FROM customers WHERE store_id = ? ${searchTermQuery}`;
 
-        if(limit) {
+        if (limit) {
             sql += ` LIMIT ? OFFSET ?`;
         }
         const searchValues = searchTerm ? Array(5).fill(`%${searchTerm}%`) : [];
@@ -46,11 +46,29 @@ const findById = async (id, store_id) => {
     const sql = `SELECT * FROM customers WHERE store_id = ${store_id} AND id = ${id}`;
     try {
         const [results] = await db.query(sql);
+
         return results;
     } catch (error) {
         throw new Error(`Database Error: ${error.message}`);
     }
 };
+
+const findByInvoiceId = async (id, store_id) => {
+    const sql = `
+        SELECT invoices.customer_id, c.* 
+        FROM invoices 
+        LEFT JOIN customers c ON invoices.customer_id = c.id
+        WHERE invoices.store_id = ? AND invoices.id = ?
+    `;
+    try {
+        const [results] = await db.query(sql, [store_id, id]);
+        console.log("results", results);
+        return results;
+    } catch (error) {
+        throw new Error(`Database Error: ${error.message}`);
+    }
+};
+
 
 const create = async (store_id, data) => {
     try {
@@ -63,7 +81,7 @@ const create = async (store_id, data) => {
         return results;
     } catch (error) {
         console.log("error", error);
-        
+
         throw new Error(`Database Error: ${error.message}`);
     }
 };
@@ -104,4 +122,4 @@ const deleteById = async (id, store_id) => {
     }
 };
 
-module.exports = { findAll, create, findById, update, deleteById };
+module.exports = { findAll, create, findById, findByInvoiceId, update, deleteById };

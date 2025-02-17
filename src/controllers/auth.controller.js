@@ -8,6 +8,8 @@ const adminLogin = async (req, res, next) => {
     try {
         let { email, password } = req.body;
 
+        console.log(" email, password",  email, password);
+        
         password = hashPassword(password);
 
         const admin = await Auth.adminLogin(email, password);

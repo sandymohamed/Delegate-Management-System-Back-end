@@ -32,7 +32,7 @@ const getProductById = async (req, res, next) => {
             res.json({ success: true, data: product, });
         }
 
-        else res.status(404).send('User not found');
+        else res.status(404).send('Product not found');
 
 
     } catch (err) {
@@ -44,9 +44,11 @@ const getProductById = async (req, res, next) => {
 const createProduct = async (req, res) => {
     try {
         const store_id = req.user.store_id;
-        const products = await Product.create(store_id, req.body);
-        res.status(201).json({ success: true, message: " created successfully" });
+        await Product.create(store_id, req.body);
+        res.status(201).json({ success: true, message: "Product created successfully" });
     } catch (err) {
+        console.log("[ERROR] Failed to create product:", err.message);
+        
         res.status(500).send(err);
     }
 };
@@ -57,8 +59,8 @@ const updateProduct = async (req, res) => {
 
     try {
         const store_id = req.user.store_id;
-        const product = await Product.update(req.params.id, req.body, store_id);
-        res.status(204).json({ success: true, message: " update successfully" });
+        await Product.update(req.params.id, req.body, store_id);
+        res.status(204).json({ success: true, message: "Product updated successfully" });
     } catch (err) {
         res.status(500).send(err);
     }

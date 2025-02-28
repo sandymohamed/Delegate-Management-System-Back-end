@@ -49,54 +49,45 @@ const findById = async (id, store_id) => {
     }
 };
 
-/*
-store_id int 
-name varchar(100) 
-price decimal(10,2) 
-created_at timestamp 
-description text 
-qr_code varchar(255) 
-stock_quantity int 
-exp_date timestamp
-*/
-
 const create = async (store_id, product) => {
     try {
         const sql = `INSERT INTO products (store_id, name, price, description, qr_code, stock_quantity, exp_date) VALUES (?,?, ?, ?, ?, ?, ?)`;
         const [results] = await db.query(sql, [store_id, product.name, product.price, product.description, product.qr_code, product.stock_quantity, product.exp_date]);
 
         if (results.affectedRows === 0) {
-            return ({ success: false, error: 'Customer not found' });
+            return ({ success: false, error: 'Product not found' });
         }
 
         return (results);
     } catch (error) {
+        console.log("error", error);
+        
         throw new Error(`Database Error: ${error.message}`);
     }
 };
 
-const update = async (id, user, store_id) => {
+const update = async (id, product, store_id) => {
     try {
-        const sql = 'UPDATE users SET  name = ?, email = ?, phone = ?, password = ?, role = ? WHERE id = ? AND store_id = ?';
-        const [result] = await db.query(sql, [user.name, user.email, user.phone, user.password, user.role, id, store_id]);
+        const sql = 'UPDATE products SET  name = ?, price = ?, description = ?, qr_code = ?, stock_quantity = ?, exp_date = ? WHERE id = ? AND store_id = ?';
+        const [result] = await db.query(sql, [product.name, product.price, product.description, product.qr_code, product.stock_quantity, product.exp_date, id, store_id]);
 
         if (result.affectedRows === 0) {
-            return ({ success: false, error: 'Customer not found' });
+            return ({ success: false, error: 'Product not found' });
         }
 
-        return ({ success: true, message: 'User Updated successfully!', result });
+        return ({ success: true, message: 'Product Updated successfully!', result });
     } catch (error) {
         throw new Error(`Database Error: ${error.message}`);
     }
 };
 
 const deleteById = async (id, store_id) => {
-    const sql = `DELETE FROM users WHERE store_id = ${store_id} AND id = ${id}`;
+    const sql = `DELETE FROM products WHERE store_id = ${store_id} AND id = ${id}`;
     try {
         const [results] = await db.query(sql);
 
         if (results.affectedRows === 0) {
-            return ({ success: false, error: 'Customer not found' });
+            return ({ success: false, error: 'Product not found' });
         }
         return ({ success: true, results });
     } catch (error) {

@@ -9,6 +9,8 @@ const createInvoice = async (req, res) => {
 
     const { customer_id, invoice_number, due_date = new Date(), discount, products, van_id } = req.body;
 
+    if(!customer_id) return res.status(400).json({ success: false, error: "Customer ID is required" });
+    if(!products.length) return res.status(400).json({ success: false, error: "Products are required" });
     console.log("products", products);
     
     // Calculate total price

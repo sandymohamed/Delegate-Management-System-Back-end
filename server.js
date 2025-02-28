@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const port = 8800;
 
+
 const authRoutes = require('./src/routes/auth.routes');
 const usersRoutes = require('./src/routes/users.routes');
 const customersRoutes = require('./src/routes/customers.routes');

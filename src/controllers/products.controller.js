@@ -1,4 +1,3 @@
-const { hashPassword } = require('../middlewares/encryption');
 const Product = require('../models/products.model');
 
 // TODO: products stock doesn't update in create invoice 
@@ -8,7 +7,6 @@ const getAllProducts = async (req, res) => {
         const store_id = req.user.store_id;
 
         const { searchTerm, limit, page } = req.body;
-
         const products = await Product.findAll(store_id, searchTerm, limit, page);
         res.json({ success: true, data: products, });
 
@@ -45,7 +43,6 @@ const getProductById = async (req, res, next) => {
 
 const createProduct = async (req, res) => {
     try {
-        req.body.password = hashPassword(req.body.password);
         const store_id = req.user.store_id;
         const products = await Product.create(store_id, req.body);
         res.status(201).json({ success: true, message: " created successfully" });

@@ -30,6 +30,17 @@ const addPayment = async (req, res) => {
         return res.status(500).json({ success: false, error: error.message });
     }
 };
+const addPaymentForCustomer = async (req, res) => {
+    const { customer_id, user_id, amount } = req.body;
+    const { store_id } = req.user;
+
+    try {
+        const paymentData = await paymentModel.addPaymentForCustomer(customer_id, store_id, amount, user_id);
+        return res.status(201).json(paymentData);
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+};
 
 
 // get all payments to an invoice
@@ -50,5 +61,6 @@ const getInvoicePayments = async (req, res) => {
 
 module.exports = {
     addPayment,
+    addPaymentForCustomer,
     getInvoicePayments,
 };

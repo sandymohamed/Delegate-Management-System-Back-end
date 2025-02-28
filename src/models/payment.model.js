@@ -238,7 +238,6 @@ const addPayment = async (invoice_id, store_id, amount, user_id) => {
     await connection.beginTransaction(); // Start transaction
 
     try {
-        console.log("invoice_id, store_id, amount, user_id", invoice_id, store_id, amount, user_id);
 
         // ✅ Fetch invoice & customer details concurrently
         const [invoiceData, customerData] = await Promise.all([
@@ -251,9 +250,6 @@ const addPayment = async (invoice_id, store_id, amount, user_id) => {
 
         const invoice = invoiceData[0];
         const customer = customerData[0];
-
-        console.log("Invoice Data:", invoice);
-        console.log("Customer Data:", customer);
 
         // ✅ Direct Payment Case
         if (!invoice.is_paid && Number(amount) <= Number(invoice.total_unpaid)) {
@@ -285,9 +281,7 @@ const addPayment = async (invoice_id, store_id, amount, user_id) => {
                 if (remainingAmount <= 0) break;
 
                 const amountToPay = Math.min(invoice.total_unpaid, remainingAmount);
-                const isPaid = invoice.total_unpaid <= remainingAmount;
-
-                console.log(`Paying ${amountToPay} for invoice ${invoice.id}`);
+                // const isPaid = invoice.total_unpaid <= remainingAmount;
 
                 // Batch insert payments
                 paymentQueries.push(connection.query(`
@@ -318,7 +312,56 @@ const addPayment = async (invoice_id, store_id, amount, user_id) => {
     } catch (error) {
         await connection.rollback();
         connection.release();
-        console.error(error);
+        throw new Error(`Database Error: ${error.message}`);
+    }
+};
+const addPaymentForCustomer = async (customer_id, store_id, amount, user_id) => {
+    const connection = await db.getConnection();
+    await connection.beginTransaction(); // Start transaction
+
+    try {
+        // ✅ Distribute Payment Across Unpaid Invoices
+        const unpaidInvoices = await InvoiceModel.getAllUnpaidInvoicesByCustomer(store_id, customer_id);
+
+        let remainingAmount = amount;
+        let paymentQueries = [];
+        let updateQueries = [];
+
+        if (unpaidInvoices.length) {
+            for (const invoice of unpaidInvoices) {
+                if (remainingAmount <= 0) break;
+
+                const amountToPay = Math.min(invoice.total_unpaid, remainingAmount);
+
+                // Batch insert payments
+                paymentQueries.push(connection.query(`
+                INSERT INTO payments (invoice_id, store_id, payment_date, amount, user_id)
+                VALUES (?, ?, NOW(), ?, ?)
+            `, [invoice.id, store_id, amountToPay, user_id]));
+
+                // Batch update invoices
+                updateQueries.push(updateInvoicePayment(invoice.id, amountToPay, connection));
+
+                remainingAmount -= amountToPay;
+            }
+
+            // ✅ Execute all queries in parallel for better performance
+            await Promise.all([...paymentQueries, ...updateQueries]);
+        }
+
+        if (remainingAmount > 0) {
+            // throw new Error("Insufficient payment amount!");
+            connection.query(`
+                UPDATE  customers SET total_unpaid_invoices = total_unpaid_invoices - ? WHERE id = ?
+            `, [remainingAmount, customer_id]);
+        }
+        await connection.commit();
+        connection.release();
+        return { success: true, message: "Payment added successfully!" };
+
+    } catch (error) {
+        await connection.rollback();
+        connection.release();
         throw new Error(`Database Error: ${error.message}`);
     }
 };
@@ -393,4 +436,5 @@ module.exports = {
     addPayment,
     updateInvoicePayment,
     getInvoicePayments,
+    addPaymentForCustomer,
 };

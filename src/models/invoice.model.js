@@ -10,15 +10,15 @@ const createInvoice = async (store_id, agent_id, customer_id, invoice_number, du
             VALUES (?, ?, ?, ?, ?, ?, ? ,?)
         `;
         const values = [store_id, agent_id, customer_id, invoice_number, due_date, total_price, discount, total_after_discount];
-        
+
         const [results] = await db.query(query, values)
-        
+
         if (results.affectedRows === 0) {
             return ({ success: false, error: 'Something went wrong!' });
         }
-        
+
         const invoiceId = results.insertId;
-                
+
         if (!invoice_number) {
             const invoiceNumberQuery = `
             UPDATE invoices
@@ -27,8 +27,8 @@ const createInvoice = async (store_id, agent_id, customer_id, invoice_number, du
             `;
             await db.query(invoiceNumberQuery, [invoiceId, invoiceId]);
         }
-        
-    return invoiceId;
+
+        return invoiceId;
 
     } catch (error) {
         throw new Error(`Database Error: ${error.message}`);
@@ -69,19 +69,38 @@ const getAllInvoices = async (store_id) => {
             `SELECT 
     i.id, i.store_id, i.agent_id, i.customer_id, i.invoice_number, 
     i.invoice_date, i.due_date, i.total_price, i.discount, 
-    i.total_after_discount, i.is_paid, i.total_paid, i.total_unpaid,
-    COALESCE(
-        JSON_ARRAYAGG(
+    i.total_after_discount, i.is_paid, i.total_paid, i.total_unpaid, i.returned_amount,
+ 
+      (
+        SELECT JSON_ARRAYAGG(
             JSON_OBJECT(
                 'product_id', s.product_id,
                 'quantity', s.quantity,
                 'price', s.price,
-                'product_total_price', s.total_price
+                'product_total_price', s.total_price,
+                'product_name', p.name
             )
+        ) 
+        FROM sales s
+        LEFT JOIN products p ON s.product_id = p.id
+        WHERE s.invoice_id = i.id
+    ) AS products,
+
+       COALESCE(
+        JSON_ARRAYAGG(
+            CASE 
+                WHEN r.product_id IS NOT NULL THEN JSON_OBJECT(
+                    'product_id', r.product_id,
+                    'return_quantity', r.return_quantity,
+                    'return_amount', r.return_amount
+                )
+                ELSE NULL 
+            END
         ), JSON_ARRAY()
-    ) AS products
+    ) AS returns
 FROM invoices i
 LEFT JOIN sales s ON (i.id = s.invoice_id AND i.store_id = ?)
+LEFT JOIN return_items r ON (i.id = r.invoice_id)
 GROUP BY i.id;`;
 
         const [results] = await db.query(query, [store_id]);
@@ -171,22 +190,48 @@ const getAllInvoicesByAgent = async (store_id, agent_id, searchTerm = "", limit 
 
         // SQL query to get paginated data
         const dataQuery = `
-            SELECT 
-                i.id, i.store_id, i.agent_id, i.customer_id, i.invoice_number, 
-                i.invoice_date, i.due_date, i.total_price, i.discount, 
-                i.total_after_discount, i.is_paid, i.total_paid, i.total_unpaid,
-                COALESCE(
-                    JSON_ARRAYAGG(
-                        JSON_OBJECT(
-                            'product_id', s.product_id,
-                            'quantity', s.quantity,
-                            'price', s.price,
-                            'product_total_price', s.total_price
-                        )
-                    ), JSON_ARRAY()
-                ) AS products
+        SELECT 
+            i.id, i.store_id, i.agent_id, i.invoice_number, 
+            i.invoice_date, i.due_date, i.total_price, i.discount, 
+            i.total_after_discount, i.is_paid, i.total_paid, i.total_unpaid,
+            i.customer_id,
+            c.name AS customer_name,
+            c.customer_store_name,
+            c.phone AS customer_phone,
+            c.location AS customer_location,
+            c.total_unpaid_invoices AS customer_total_unpaid_invoices,
+
+                  (
+        SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+                'product_id', s.product_id,
+                'quantity', s.quantity,
+                'price', s.price,
+                'product_total_price', s.total_price,
+                'product_name', p.name
+            )
+        ) 
+        FROM sales s
+        LEFT JOIN products p ON s.product_id = p.id
+        WHERE s.invoice_id = i.id
+    ) AS products,
+
+               COALESCE(
+        JSON_ARRAYAGG(
+            CASE 
+                WHEN r.product_id IS NOT NULL THEN JSON_OBJECT(
+                    'product_id', r.product_id,
+                    'return_quantity', r.return_quantity,
+                    'return_amount', r.return_amount
+                )
+                ELSE NULL 
+            END
+        ), JSON_ARRAY()
+    ) AS returns
             FROM invoices i 
+            LEFT JOIN customers c ON i.customer_id = c.id
             LEFT JOIN sales s ON i.id = s.invoice_id
+            LEFT JOIN return_items r ON (i.id = r.invoice_id)
             WHERE i.store_id = ? AND i.agent_id = ? ${searchTermQuery}
             GROUP BY i.id
             LIMIT ? OFFSET ?;
@@ -227,26 +272,58 @@ const getAllInvoicesByCustomer = async (store_id, customer_id, limit = 100, page
 
         const query =
             `SELECT 
-    i.id, i.store_id, i.agent_id, i.customer_id, i.invoice_number, 
-    i.invoice_date, i.due_date, i.total_price, i.discount, 
-    i.total_after_discount, i.is_paid, i.total_paid, i.total_unpaid,
-    COALESCE(
-        JSON_ARRAYAGG(
-            JSON_OBJECT(
-                'product_id', s.product_id,
-                'quantity', s.quantity,
-                'price', s.price,
-                'product_total_price', s.total_price
-            )
-        ), JSON_ARRAY()
-    ) AS products
-FROM invoices i 
+            i.id, i.store_id,
+            i.agent_id,
+            i.invoice_number, 
+            i.invoice_date, 
+            i.due_date, 
+            i.total_price, 
+            i.discount, 
+            i.total_after_discount,
+            i.is_paid,
+            i.total_paid,
+            i.total_unpaid,
+            i.customer_id,
+            c.name AS customer_name,
+            c.customer_store_name,
+            c.phone AS customer_phone,
+            c.location AS customer_location,
+            c.total_unpaid_invoices AS customer_total_unpaid_invoices,
+            (
+            SELECT JSON_ARRAYAGG(
+                JSON_OBJECT(
+                    'product_id', s.product_id,
+                    'quantity', s.quantity,
+                    'price', s.price,
+                    'product_total_price', s.total_price,
+                    'product_name', p.name
+                )
+            ) 
+            FROM sales s
+                LEFT JOIN products p ON s.product_id = p.id
+            WHERE s.invoice_id = i.id
+            ) AS products,
+            COALESCE(
+                JSON_ARRAYAGG(
+                CASE 
+                    WHEN r.product_id IS NOT NULL THEN JSON_OBJECT(
+                    'product_id', r.product_id,
+                    'return_quantity', r.return_quantity,
+                    'return_amount', r.return_amount
+                    )
+                    ELSE NULL 
+                END
+                ), JSON_ARRAY()
+            ) AS returns
+        FROM invoices i 
+        LEFT JOIN customers c ON i.customer_id = c.id
 
-LEFT JOIN sales s ON (i.id = s.invoice_id )
-Where ( i.store_id = ? AND i.customer_id = ?)
-GROUP BY i.id
-LIMIT ? OFFSET ?
-;`;
+        LEFT JOIN sales s ON (i.id = s.invoice_id )
+        LEFT JOIN return_items r ON (i.id = r.invoice_id)
+        Where ( i.store_id = ? AND i.customer_id = ?)
+        GROUP BY i.id
+        LIMIT ? OFFSET ?
+        ;`;
         const [results] = await db.query(query, [store_id, customer_id, limit, offset]);
 
         if (results.affectedRows === 0) {
@@ -254,7 +331,7 @@ LIMIT ? OFFSET ?
         }
         const countQuery =
             `SELECT Count (*) AS total FROM invoices i 
-Where ( i.store_id = ? AND i.customer_id = ?);`;
+                Where ( i.store_id = ? AND i.customer_id = ?);`;
         const [countResults] = await db.query(countQuery, [store_id, customer_id, limit, offset]);
 
         console.log("countResults", countResults);
@@ -288,9 +365,24 @@ const getAllUnpaidInvoicesByCustomer = async (store_id, customer_id) => {
                 'product_total_price', s.total_price
             )
         ), JSON_ARRAY()
-    ) AS products
+    ) AS products,
+      COALESCE(
+        JSON_ARRAYAGG(
+            CASE 
+                WHEN r.product_id IS NOT NULL THEN JSON_OBJECT(
+                    'product_id', r.product_id,
+                    'return_quantity', r.return_quantity,
+                    'return_amount', r.return_amount,
+                    'reason', r.reason,
+                    'return_date', r.return_date
+                )
+                ELSE NULL 
+            END
+        ), JSON_ARRAY()
+    ) AS returns
 FROM invoices i 
 LEFT JOIN sales s ON (i.id = s.invoice_id )
+LEFT JOIN return_items r ON (i.id = r.invoice_id)
 Where ( i.store_id = ? AND i.customer_id = ? AND i.is_paid = 0)
 GROUP BY i.id
 ORDER BY i.total_unpaid ASC
@@ -312,28 +404,52 @@ ORDER BY i.total_unpaid ASC
 const getInvoiceDetails = async (store_id, invoice_id) => {
     try {
         const query = `
-    SELECT i.* ,
-        c.name AS customer_name,
-     c.customer_store_name,
-     c.phone AS customer_phone,
-     c.location AS customer_location,
-     c.total_unpaid_invoices AS customer_total_unpaid_invoices,
-    COALESCE(
-        JSON_ARRAYAGG(
+SELECT 
+    i.id AS invoice_id, 
+    i.*, 
+    c.name AS customer_name,
+    c.customer_store_name,
+    c.phone AS customer_phone,
+    c.location AS customer_location,
+    c.total_unpaid_invoices AS customer_total_unpaid_invoices,
+
+    -- ✅ Aggregate Products Separately
+    (
+        SELECT JSON_ARRAYAGG(
             JSON_OBJECT(
-            'product_id', s.product_id,
-            'quantity', s.quantity,
-            'price', s.price,
-            'product_total_price', s.total_price,
-            'product_name', p.name
+                'product_id', s.product_id,
+                'quantity', s.quantity,
+                'price', s.price,
+                'product_total_price', s.total_price,
+                'product_name', p.name
             )
-        ), JSON_ARRAY()
-    ) AS products
-    FROM invoices i 
-    LEFT JOIN sales s ON i.id = s.invoice_id
-    LEFT JOIN products p ON s.product_id = p.id
-    LEFT JOIN customers c ON i.customer_id = c.id
-    WHERE ( i.store_id = ? AND i.id = ?)
+        ) 
+        FROM sales s
+        LEFT JOIN products p ON s.product_id = p.id
+        WHERE s.invoice_id = i.id
+    ) AS products,
+
+    -- ✅ Aggregate Returns Separately
+    (
+        SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+                'product_id', r.product_id,
+                'return_quantity', r.return_quantity,
+                'return_amount', r.return_amount,
+                'reason', r.reason,
+                'return_date', r.return_date
+            )
+        ) 
+        FROM return_items r
+        WHERE r.invoice_id = i.id
+    ) AS returns
+
+FROM invoices i
+LEFT JOIN customers c ON i.customer_id = c.id
+
+WHERE i.store_id = ? AND i.id = ?;
+
+
     `;
 
         const [results] = await db.query(query, [store_id, invoice_id]);
@@ -347,6 +463,79 @@ const getInvoiceDetails = async (store_id, invoice_id) => {
         throw new Error(`Database Error: ${error.message}`);
     }
 }
+// Get invoice product details
+// const getInvoiceProductDetails = async (store_id, invoice_id, product_id) => {
+//     try {
+//         const query = `
+//     SELECT s.* ,
+//      COALESCE(
+//         JSON_ARRAYAGG(
+//             CASE 
+//                 WHEN r.product_id IS NOT NULL THEN JSON_OBJECT(
+//                     'product_id', r.product_id,
+//                     'return_quantity', r.return_quantity,
+//                     'return_amount', r.return_amount,
+//                     'reason', r.reason,
+//                     'return_date', r.return_date
+//                 )
+//                 ELSE NULL 
+//             END
+//         ), JSON_ARRAY()
+//     ) AS returns
+//     FROM sales s
+//     LEFT JOIN return_items r ON (s.invoice_id = r.invoice_id)
+//     WHERE ( s.store_id = ? AND s.invoice_id = ? AND s.product_id)
+//     `;
+
+//         const [results] = await db.query(query, [store_id, invoice_id, product_id]);
+
+//         if (results.affectedRows === 0) {
+//             return ({ success: false, error: 'Something went wrong!' });
+//         }
+
+//         return results;
+//     } catch (error) {
+//         throw new Error(`Database Error: ${error.message}`);
+//     }
+// }
+
+
+const getInvoiceProductDetails = async (store_id, invoice_id, product_id) => {
+    try {
+        const query = `
+            SELECT 
+                s.*,
+                COALESCE(
+                    JSON_ARRAYAGG(
+                        CASE 
+                            WHEN r.product_id IS NOT NULL THEN JSON_OBJECT(
+                                'product_id', r.product_id,
+                                'return_quantity', r.return_quantity,
+                                'return_amount', r.return_amount,
+                                'reason', r.reason,
+                                'return_date', r.return_date
+                            )
+                            ELSE NULL 
+                        END
+                    ), JSON_ARRAY()
+                ) AS returns
+            FROM sales s
+            LEFT JOIN return_items r ON (s.invoice_id = r.invoice_id AND s.product_id = r.product_id)
+            WHERE s.store_id = ? AND s.invoice_id = ? AND s.product_id = ?
+            GROUP BY s.id
+        `;
+
+        const [results] = await db.query(query, [store_id, invoice_id, product_id]);
+
+        if (results.length === 0) {
+            return { success: false, error: 'Something went wrong!' };
+        }
+
+        return results;
+    } catch (error) {
+        throw new Error(`Database Error: ${error.message}`);
+    }
+};
 
 module.exports = {
     createInvoice,
@@ -356,4 +545,5 @@ module.exports = {
     getAllInvoicesByAgent,
     getAllInvoicesByCustomer,
     getAllUnpaidInvoicesByCustomer,
+    getInvoiceProductDetails,
 };

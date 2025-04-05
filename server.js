@@ -15,10 +15,9 @@ const dailyInventoryRoutes = require('./src/routes/dailyInventory.routes');
 const vansRoutes = require('./src/routes/vans.routes');
 const expensesRoutes = require('./src/routes/expense.routes');
 const productsRoutes = require('./src/routes/products.routes');
+// const returnsRoutes = require('./src/routes/returns.routes');
 
 // const storesRoutes = require('./src/routes/stores');
-// const productsRoutes = require('./src/routes/products');
-// const invoicesRoutes = require('./src/routes/invoices');
 
 app.use(express.json());
 
@@ -39,7 +38,6 @@ app.use('/payments', paymentRoutes);
 app.use('/daily-inventory', dailyInventoryRoutes);
 app.use('/vans', vansRoutes);
 app.use('/expenses', expensesRoutes);
-// TODO: enhance this route it is just a copy of users
 app.use('/products', productsRoutes);
 
 // app.use('/stores', storesRoutes);

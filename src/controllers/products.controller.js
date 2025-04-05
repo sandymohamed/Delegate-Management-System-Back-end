@@ -1,4 +1,6 @@
 const Product = require('../models/products.model');
+const InvoiceModel = require('../models/invoice.model');
+const db = require('../../config/db.config');
 
 // TODO: products stock doesn't update in create invoice 
 
@@ -48,7 +50,6 @@ const createProduct = async (req, res) => {
         res.status(201).json({ success: true, message: "Product created successfully" });
     } catch (err) {
         console.log("[ERROR] Failed to create product:", err.message);
-        
         res.status(500).send(err);
     }
 };
@@ -78,9 +79,20 @@ const deleteProduct = async (req, res) => {
 };
 
 
-/**
- * TODO: work on this
- * const handleProductReturn = async (invoice_id, store_id, product_id, return_quantity, user_id, reason = null) => {
+
+const handleProductReturn = async (req, res) => {
+
+    const {
+        invoice_id,
+        product_id,
+        return_quantity,
+        reason = null
+    } = req.body;
+
+    const {
+        store_id,
+        id: user_id,
+    } = req.user;
     try {
         // ✅ Get Invoice & Product Data
         let invoiceData = await InvoiceModel.getInvoiceDetails(store_id, invoice_id);
@@ -89,14 +101,13 @@ const deleteProduct = async (req, res) => {
         }
         invoiceData = invoiceData[0];
 
-        let productData = await InvoiceModel.getInvoiceProductDetails(invoice_id, product_id);
+        console.log("invoiceData", invoiceData);
+
+        let productData = await InvoiceModel.getInvoiceProductDetails(store_id, invoice_id, product_id);
         if (!productData || productData.length === 0) {
             return { success: false, error: "Product not found in invoice!" };
         }
         productData = productData[0];
-
-        console.log("Invoice Data:", invoiceData);
-        console.log("Product Data:", productData);
 
         // ✅ Validate Return Quantity
         if (return_quantity <= 0 || return_quantity > productData.quantity) {
@@ -104,43 +115,107 @@ const deleteProduct = async (req, res) => {
         }
 
         // ✅ Calculate return value (unit price * quantity returned)
-        let return_value = productData.unit_price * return_quantity;
+        let return_value = productData.price * return_quantity;
 
+        console.log("return_value", return_value)
         // ✅ Insert Return Record
         const query = `
-            INSERT INTO return_items (invoice_id, store_id, product_id, return_quantity, return_amount, processed_by, reason)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO return_items (invoice_id, store_id, product_id, return_quantity, return_amount, agent_id, reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         `;
         const [result] = await db.query(query, [invoice_id, store_id, product_id, return_quantity, return_value, user_id, reason]);
+        console.log("result", result)
 
         if (result.affectedRows === 0) {
             return { success: false, error: "Failed to process return!" };
         }
 
-        // ✅ Update `invoices.returned_amount`
-        const updateInvoiceQuery = `
-            UPDATE invoices 
-            SET returned_amount = returned_amount + ?
-            WHERE id = ?
-        `;
-        await db.query(updateInvoiceQuery, [return_value, invoice_id]);
-
         // ✅ Update stock (return items to inventory)
         const updateStockQuery = `
             UPDATE products 
-            SET stock = stock + ?
+            SET stock_quantity = stock_quantity + ?
             WHERE id = ?
         `;
         await db.query(updateStockQuery, [return_quantity, product_id]);
 
-        console.log(`Return of ${return_quantity} units of Product ID ${product_id} processed successfully!`);
-        return { success: true, message: "Product return processed successfully!" };
+        res.send({ success: true, message: "Product return processed successfully!" });
 
     } catch (error) {
         console.error(error);
         throw new Error(`Database Error: ${error.message}`);
     }
 };
- */
 
-module.exports = { getAllProducts, createProduct, getProductById, updateProduct, deleteProduct };
+const handleMultiProductsReturn = async (req, res) => {
+    console.log("req.user", req.user);
+    
+    try {
+        const { store_id, id: user_id } = req.user;
+        const returnItems = req.body; // Expecting an array of return items
+
+        // Validate input: Ensure it's an array
+        if (!Array.isArray(returnItems) || returnItems.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: "Invalid request format. Expected an array of return items.",
+            });
+        }
+
+        // Loop through each return item
+        for (const item of returnItems) {
+            const { invoice_id, product_id, return_quantity, reason = null } = item;
+
+            // ✅ Check if invoice exists
+            let invoiceData = await InvoiceModel.getInvoiceDetails(store_id, invoice_id);
+            if (!invoiceData || invoiceData.length === 0) {
+                return res.status(400).json({ success: false, error: `Invoice ID ${invoice_id} not found!` });
+            }
+            console.log("store_id, invoice_id, product_id", store_id, invoice_id, product_id);
+            
+
+            let productData = await InvoiceModel.getInvoiceProductDetails(store_id, invoice_id, product_id);
+            console.log(`DEBUG: productData for product_id ${product_id} ->`, productData);
+            
+            if (!productData || !Array.isArray(productData) || productData.length === 0) {
+                return res.status(400).json({ success: false, error: `Product ID ${product_id} not found in invoice ${invoice_id}!` });
+            }
+            
+            productData = productData[0];  // ✅ Now we ensure `productData` exists
+            
+            // ✅ Check if `quantity` exists before using it
+            if (!("quantity" in productData)) { 
+                return res.status(400).json({ success: false, error: `Invalid product data: missing quantity for product ID ${product_id}!` });
+            }
+
+            // ✅ Calculate return value
+            let return_value = productData.price * return_quantity;
+
+            // ✅ Insert return record
+            const query = `
+                INSERT INTO return_items (invoice_id, store_id, product_id, return_quantity, return_amount, agent_id, reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `;
+            const [result] = await db.query(query, [invoice_id, store_id, product_id, return_quantity, return_value, user_id, reason]);
+
+            if (result.affectedRows === 0) {
+                return res.status(500).json({ success: false, error: "Failed to process return!" });
+            }
+
+            // ✅ Update stock (return items to inventory)
+            const updateStockQuery = `
+                UPDATE products 
+                SET stock_quantity = stock_quantity + ?
+                WHERE id = ?
+            `;
+            await db.query(updateStockQuery, [return_quantity, product_id]);
+        }
+
+        res.json({ success: true, message: "All product returns processed successfully!" });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, error: `Database Error: ${error.message}` });
+    }
+};
+
+module.exports = { getAllProducts, createProduct, getProductById, updateProduct, deleteProduct, handleProductReturn, handleMultiProductsReturn };

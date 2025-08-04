@@ -11,6 +11,16 @@ const findAll = async (store_id) => {
     }
 };
 
+const findAllAgents = async (store_id) => {
+    const sql = `SELECT * FROM users WHERE store_id = ${store_id} AND role = 'agent'`;
+    try {
+        const [results] = await db.query(sql);
+        return results;
+    } catch (error) {
+        throw new Error(`Database Error: ${error.message}`);
+    }
+};
+
 const findById = async (id, store_id) => {
     const sql = `SELECT * FROM users WHERE store_id = ${store_id} AND id = ${id}`;
     try {
@@ -65,4 +75,4 @@ const deleteById = async (id, store_id) => {
     }
 };
 
-module.exports = { findAll, create, findById, update, deleteById };
+module.exports = { findAll, findAllAgents, create, findById, update, deleteById };

@@ -18,6 +18,23 @@ const getAllUsers = async (req, res) => {
     }
 };
 
+const getAllAgents = async (req, res) => {
+    try {
+        const store_id = req.user.store_id;
+
+        const users = await User.findAllAgents(store_id);
+        res.json({ success: true, data: users, });
+
+    } catch (error) {
+        console.error("[ERROR] Failed to fetch users:", error.message);
+
+        res.status(500).json({
+            success: false,
+            error: "Failed to fetch users. Please try again later."
+        });
+    }
+};
+
 const getUserById = async (req, res, next) => {
     try {
         const id = req.params.id;
@@ -74,4 +91,4 @@ const deleteUser = async (req, res) => {
     }
 };
 
-module.exports = { getAllUsers, createUser, getUserById, updateUser, deleteUser };
+module.exports = { getAllUsers,getAllAgents, createUser, getUserById, updateUser, deleteUser };

@@ -2,15 +2,17 @@ const express = require('express');
 const router = express.Router();
 
 const vanController = require('../controllers/van.controller');
-const validateStoreId = require('../middlewares/validateStoreId');
+// const validateStoreId = require('../middlewares/validateStoreId');
 // TODO: add checkAuthAdmin middleware
 const checkAuth = require('../middlewares/check-auth');
-// const checkAuthAdmin = require('../middlewares/check-auth-admin');
+const checkAuthAdmin = require('../middlewares/check-auth-admin');
 
-router.post('/', checkAuth, validateStoreId, vanController.createVan);
-router.get('/', checkAuth, vanController.getVansByStore);
+router.post('/', checkAuthAdmin, vanController.createVan);
+router.post('/all/', checkAuthAdmin, vanController.getVansByStore);
+router.get('/', checkAuthAdmin, vanController.getVansByStore);
 router.get('/user/:user_id', checkAuth, vanController.getVanByAgent);
-router.put('/:van_id', checkAuth, vanController.updateVan);
-router.delete('/:van_id', checkAuth, vanController.deleteVan);
+router.get('/:id', checkAuth, vanController.getVanByID);
+router.put('/:van_id', checkAuthAdmin, vanController.updateVan);
+router.delete('/:van_id', checkAuthAdmin, vanController.deleteVan);
 
 module.exports = router;

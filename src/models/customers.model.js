@@ -22,7 +22,7 @@ const findAll = async (store_id, searchTerm, limit, page) => {
         }
         const searchValues = searchTerm ? Array(5).fill(`%${searchTerm}%`) : [];
 
-        console.log("searchValues", searchValues);
+        // console.log("searchValues", searchValues);
 
         const [results] = await db.query(sql, [store_id, ...searchValues, limit, offset]);
 

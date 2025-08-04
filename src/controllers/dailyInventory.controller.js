@@ -29,6 +29,7 @@ const getDailyInventoryByVan = async (req, res) => {
     }
 };
 
+
 // Get current inventory for a van
 const getAllProductsInVan = async (req, res) => {
     const { van_id } = req.params;

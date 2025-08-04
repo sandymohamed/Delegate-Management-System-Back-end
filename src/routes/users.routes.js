@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAllUsers, createUser, getUserById, updateUser, deleteUser } = require('../controllers/users.controller');
+const { getAllUsers, getAllAgents, createUser, getUserById, updateUser, deleteUser } = require('../controllers/users.controller');
 
 // const hashPII = require('../middlewares/hashPII');;
 // const unhashPII = require('../middlewares/unhashPII');
@@ -30,6 +30,7 @@ const checkAuthAdmin = require('../middlewares/check-auth-admin');
 // router.put('/:id', checkAuthAdmin, validateStoreId, hashPII, updateUser);
 
 router.get('/', checkAuthAdmin, getAllUsers);
+router.get('/agents/', checkAuthAdmin, getAllAgents);
 
 router.get('/:id', checkAuthAdmin, getUserById);
 

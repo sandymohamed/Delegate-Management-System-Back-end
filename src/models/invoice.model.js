@@ -168,11 +168,11 @@ GROUP BY i.id;`;
 //     }
 // }
 
+
 const getAllInvoicesByAgent = async (store_id, agent_id, searchTerm = "", limit = 100, page = 1) => {
     try {
         limit = parseInt(limit) || 100; // Default limit
         const offset = (parseInt(page) - 1) * limit; // Calculate offset for pagination
-
         // Construct search query
         const searchTermQuery = searchTerm
             ? `AND (i.invoice_number LIKE ? OR

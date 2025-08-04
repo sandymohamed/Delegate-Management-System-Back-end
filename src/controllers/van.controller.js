@@ -15,15 +15,17 @@ const createVan = async (req, res) => {
 
 const getVansByStore = async (req, res) => {
     const store_id = req.user.store_id;
+    const { searchTerm, limit, page } = req.body;
 
     try {
-        const resultData = await vanModel.getVansByStore(store_id);
-        res.json({ success: true, data: resultData });
+        const resultData = await vanModel.getVansByStore(store_id, searchTerm, limit, page);
+        res.json(resultData);
     } catch (error) {
         console.log("Error in getVansByStore controller:", error);
         res.status(500).json({ success: false, error: error.message });
     }
 };
+
 const getVanByAgent = async (req, res) => {
     try {
     const store_id = req.user.store_id;
@@ -33,6 +35,20 @@ const getVanByAgent = async (req, res) => {
         res.json({ success: true, data: resultData });
     } catch (error) {
         console.log("Error in getVansByAgent controller:", error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+};
+
+const getVanByID = async (req, res) => {
+    try {
+    const store_id = req.user.store_id;
+    const { id } = req.params;
+    console.log("getVanByID id", id);
+    
+        const resultData = await vanModel.getVanById(store_id, id);
+        res.json({ success: true, data: resultData });
+    } catch (error) {
+        console.log("Error in getVanByID controller:", error);
         res.status(500).json({ success: false, error: error.message });
     }
 };
@@ -68,6 +84,7 @@ module.exports = {
     createVan,
     getVansByStore,
     getVanByAgent,
+    getVanByID,
     updateVan,
     deleteVan,
 };

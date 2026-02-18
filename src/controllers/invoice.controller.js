@@ -1,6 +1,7 @@
-const { off } = require('pdfkit');
+// const { off } = require('pdfkit');
 const invoiceModel = require('../models/invoice.model');
 const dailyInventoryModel = require('../models/dailyInventory.model');
+const productsModel = require('../models/products.model');
 
 // Create a new invoice
 const createInvoice = async (req, res) => {
@@ -9,10 +10,9 @@ const createInvoice = async (req, res) => {
 
     const { customer_id, invoice_number, due_date = new Date(), discount, products, van_id } = req.body;
 
-    if(!customer_id) return res.status(400).json({ success: false, error: "Customer ID is required" });
-    if(!products.length) return res.status(400).json({ success: false, error: "Products are required" });
-    console.log("products", products);
-    
+    if (!customer_id) return res.status(400).json({ success: false, error: "Customer ID is required" });
+    if (!products.length) return res.status(400).json({ success: false, error: "Products are required" });
+
     // Calculate total price
     let total_price = products?.reduce((sum, product) => sum + (product.quantity * product.price), 0);
     let total_after_discount = total_price - discount;
@@ -22,19 +22,27 @@ const createInvoice = async (req, res) => {
 
         if (!invoice_id) return res.status(500).json({ success: false, error: "something went wrong!" });
         // Add products to the invoice
-       await products.map(product => {
-            const salesData = invoiceModel.addSales(invoice_id, store_id, product.product_id, product.quantity, product.price)           
+        await products.map(product => {
+            const salesData = invoiceModel.addSales(invoice_id, store_id, product.product_id, product.quantity, product.price)
             if (!salesData) return res.status(500).json({ success: false, error: salesData });
         });
 
         products.forEach(async (product) => {
             product.quantity = product.quantity * -1;
         })
-      date  = new Date().toISOString().split('T')[0];
-              await dailyInventoryModel.addDailyInventory(van_id, products, date, id);
-       
-        
-        // TODO: Add payment details
+        date = new Date().toISOString().split('T')[0];
+
+        if (van_id) {
+            console.log("van_id from createInvoice controller ", van_id);
+            await dailyInventoryModel.addDailyInventory(van_id, products, date, id);
+        }
+
+
+        products.forEach(async (product) => {
+            const result = await productsModel.reduceStock(product.product_id, product.quantity, store_id);
+            if (!result.success) return res.status(500).json({ success: false, error: result.error });
+        });
+
         res.json({ success: true, message: 'Invoice created successfully', invoice_id });
 
 
@@ -46,6 +54,8 @@ const createInvoice = async (req, res) => {
 // Get All invoice details
 const getAllInvoicesDetails = async (req, res) => {
     const { store_id } = req.user;
+    const { searchTerm, limit, page } = req.body;
+
     try {
         const rows = await invoiceModel.getAllInvoices(store_id);
         res.json({
@@ -59,6 +69,24 @@ const getAllInvoicesDetails = async (req, res) => {
 };
 
 
+// Get All invoice details By Agent
+const getAllInvoicesAdmin = async (req, res) => {
+    const { store_id } = req.user;
+
+    const { searchTerm, limit, page } = req.body;
+    try {
+        const rows = await invoiceModel.getAllInvoicesAdmin(store_id, searchTerm, limit, page);
+        console.log("rows", rows.length);
+
+        res.json({
+            success: true,
+            result: rows
+        })
+
+    } catch (error) {
+        return res.status(500).json({ success: false, error: error.message });
+    }
+};
 // Get All invoice details By Agent
 const getAllInvoicesByAgent = async (req, res) => {
     const { store_id } = req.user;
@@ -116,4 +144,5 @@ module.exports = {
     getInvoiceDetails,
     getAllInvoicesByAgent,
     getAllInvoicesByCustomer,
+    getAllInvoicesAdmin
 };

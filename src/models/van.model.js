@@ -84,7 +84,7 @@ const getVanByAgent = async (store_id, agent) => {
         }
         return results;
     } catch (error) {
-        console.log("Error in getVanByAgent:", error);
+        console.log("Error in getVanByAgent model:", error);
         throw error; // Propagate the error to the controller
     }
 };
@@ -116,6 +116,7 @@ const updateVan = async (van_id, name, plate_number, agent_id, store_id) => {
             SET name = ?, plate_number = ?, agent_id = ?
             WHERE id = ? AND store_id = ?
         `;
+
         const [results] = await db.query(query, [name, plate_number, agent_id, van_id, store_id]);
 
         if (results.affectedRows === 0) {

@@ -3,7 +3,6 @@ const InvoiceModel = require('../models/invoice.model');
 const db = require('../../config/db.config');
 
 // TODO: products stock doesn't update in create invoice 
-
 const getAllProducts = async (req, res) => {
     try {
         const store_id = req.user.store_id;
@@ -61,6 +60,19 @@ const updateProduct = async (req, res) => {
     try {
         const store_id = req.user.store_id;
         await Product.update(req.params.id, req.body, store_id);
+        res.status(204).json({ success: true, message: "Product updated successfully" });
+    } catch (err) {
+        res.status(500).send(err);
+    }
+};
+
+const reduceProductStock = async (req, res) => {
+
+    try {
+        const store_id = req.user.store_id;
+        const { quantity } = req.body;
+        const product_id = req.params.id;
+        await Product.reduceStock(product_id, quantity, store_id);
         res.status(204).json({ success: true, message: "Product updated successfully" });
     } catch (err) {
         res.status(500).send(err);
@@ -296,7 +308,6 @@ const getReturnedProducts = async (req, res) => {
             data: results,
         };
 
-
         return res.json({ data: data });
 
     } catch (error) {
@@ -304,4 +315,4 @@ const getReturnedProducts = async (req, res) => {
     }
 };
 
-module.exports = { getAllProducts, createProduct, getProductById, updateProduct, deleteProduct, handleProductReturn, handleMultiProductsReturn, getReturnedProducts };
+module.exports = { getAllProducts, createProduct, getProductById, updateProduct, reduceProductStock, deleteProduct, handleProductReturn, handleMultiProductsReturn, getReturnedProducts };

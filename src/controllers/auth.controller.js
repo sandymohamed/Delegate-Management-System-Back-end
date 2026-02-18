@@ -5,13 +5,17 @@ const jwt = require("jsonwebtoken");
 const jwtConfig = require('../../config/jwt.config');
 
 const adminLogin = async (req, res, next) => {
+    console.log("req.body", req.body);
     try {
         let { email, password } = req.body;
-        
+
+        console.log("email", email);
+        console.log("password", password);
         password = hashPassword(password);
 
         const admin = await Auth.adminLogin(email, password);
 
+        console.log("admin", admin);
         if (admin) {
             return res.json({
                 success: true,

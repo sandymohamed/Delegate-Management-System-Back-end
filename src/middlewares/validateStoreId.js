@@ -5,7 +5,6 @@ const validateStoreId = async (req, res, next) => {
     console.log("req.body: ", req.body);
 
     const { store_id } = req.body;
-    console.log("store_id: ", store_id);
     
     if (!store_id) {
         return res.status(400).json({ error: 'store_id is required.' });

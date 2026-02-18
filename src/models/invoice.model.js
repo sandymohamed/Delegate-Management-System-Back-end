@@ -4,6 +4,7 @@ const db = require('../../config/db.config');
 // create a new invoice
 const createInvoice = async (store_id, agent_id, customer_id, invoice_number, due_date, total_price, discount, total_after_discount) => {
     try {
+        console.log("invoice_number", invoice_number);
 
         const query = `
             INSERT INTO invoices (store_id, agent_id, customer_id, invoice_number, due_date, total_price, discount, total_after_discount)
@@ -114,65 +115,114 @@ GROUP BY i.id;`;
         throw new Error(`Database Error: ${error.message}`);
     }
 }
-// // get all agent invoices
-// const getAllInvoicesByAgent = async (store_id, agent_id, searchTerm, limit) => {
 
-//     limit = limit ? limit : 100;
-//     try {
-//         const searchTermQuery = searchTerm ? `AND (i.invoice_number LIKE ${searchTerm?.invoice_number} OR
-//          i.customer_id LIKE ${searchTerm?.customer_id} OR
-//          i.agent_id LIKE ${searchTerm?.agent_id} OR
-//          i.invoice_date LIKE ${searchTerm?.invoice_date} OR 
-//          i.due_date LIKE ${searchTerm?.due_date} OR
-//          i.total_price LIKE ${searchTerm?.total_price} OR
-//          i.discount LIKE ${searchTerm?.discount}  OR
-//          i.total_after_discount LIKE ${searchTerm?.total_after_discount}  OR 
-//          i.is_paid LIKE ${searchTerm?.is_paid}  OR
-//          i.total_paid LIKE ${searchTerm?.total_paid} OR
-//          i.total_unpaid LIKE ${searchTerm?.total_unpaid} )` : '';
+// get all invoices for admin
+const getAllInvoicesAdmin = async (store_id, searchTerm = "", limit = 100, page = 1) => {
+    try {
+        limit = parseInt(limit) || 100;
+        const offset = (parseInt(page) - 1) * limit;
 
 
-//         const query =
-//             `SELECT 
-//     i.id, i.store_id, i.agent_id, i.customer_id, i.invoice_number, 
-//     i.invoice_date, i.due_date, i.total_price, i.discount, 
-//     i.total_after_discount, i.is_paid, i.total_paid, i.total_unpaid,
-//     COALESCE(
-//         JSON_ARRAYAGG(
-//             JSON_OBJECT(
-//                 'product_id', s.product_id,
-//                 'quantity', s.quantity,
-//                 'price', s.price,
-//                 'product_total_price', s.total_price
-//             )
-//         ), JSON_ARRAY()
-//     ) AS products
-// FROM invoices i 
+        // Construct search query
+        const searchTermQuery = searchTerm
+            ? `AND (i.invoice_number LIKE ? OR
+                    i.customer_id LIKE ? OR
+                    i.agent_id LIKE ? OR
+                    i.invoice_date LIKE ? OR
+                    i.due_date LIKE ? OR
+                    i.total_price LIKE ? OR
+                    i.discount LIKE ? OR
+                    i.total_after_discount LIKE ? OR
+                    i.is_paid LIKE ? OR
+                    i.total_paid LIKE ? OR
+                    i.total_unpaid LIKE ?)`
+            : "";
 
-// LEFT JOIN sales s ON (i.id = s.invoice_id )
-// Where ( i.store_id = ${store_id} AND i.agent_id = ${agent_id}  ${searchTermQuery})
-// GROUP BY i.id
-// LIMIT ${limit}
-// ;`;
-//         console.log("query", query);
+        // SQL query to get paginated data
+        const dataQuery = `
+        SELECT 
+            i.id, i.store_id, i.agent_id, i.invoice_number, 
+            i.invoice_date, i.due_date, i.total_price, i.discount, 
+            i.total_after_discount, i.is_paid, i.total_paid, i.total_unpaid,
+            i.customer_id,
+            c.name AS customer_name,
+            c.customer_store_name,
+            c.phone AS customer_phone,
+            c.location AS customer_location,
+            c.total_unpaid_invoices AS customer_total_unpaid_invoices,
 
-//         const [results] = await db.query(query);
+                  (
+        SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
+                'product_id', s.product_id,
+                'quantity', s.quantity,
+                'price', s.price,
+                'product_total_price', s.total_price,
+                'product_name', p.name
+            )
+        ) 
+        FROM sales s
+        LEFT JOIN products p ON s.product_id = p.id
+        WHERE s.invoice_id = i.id
+    ) AS products,
 
-//         if (results.affectedRows === 0) {
-//             return ({ success: false, error: 'Something went wrong!' });
-//         }
+               COALESCE(
+        JSON_ARRAYAGG(
+            CASE 
+                WHEN r.product_id IS NOT NULL THEN JSON_OBJECT(
+                    'product_id', r.product_id,
+                    'return_quantity', r.return_quantity,
+                    'return_amount', r.return_amount
+                )
+                ELSE NULL 
+            END
+        ), JSON_ARRAY()
+    ) AS returns
+            FROM invoices i 
+            LEFT JOIN customers c ON i.customer_id = c.id
+            LEFT JOIN sales s ON i.id = s.invoice_id
+            LEFT JOIN return_items r ON (i.id = r.invoice_id)
+            WHERE i.store_id = ?  ${searchTermQuery}
+            GROUP BY i.id
+            LIMIT ? OFFSET ?;
+        `;
 
-//         return results;
-//     } catch (error) {
-//         throw new Error(`Database Error: ${error.message}`);
-//     }
-// }
+        // SQL query to get total count without pagination
+        const countQuery = `
+            SELECT COUNT(*) AS total
+            FROM invoices i
+            WHERE i.store_id = ?  ${searchTermQuery};
+        `;
+
+        // Prepare search term values
+        const searchValues = searchTerm ? Array(11).fill(`%${searchTerm}%`) : [];
+
+        console.log("dataQuery", dataQuery, store_id, ...searchValues, limit, offset);
+        console.log("countQuery", countQuery, store_id, ...searchValues,);
+
+        // Execute queries
+        const [results] = await db.query(dataQuery, [store_id, ...searchValues, limit, offset]);
+        const [countResult] = await db.query(countQuery, [store_id, ...searchValues]);
+
+        return {
+            success: true,
+            total: countResult[0].total, // Total records count
+            limit,
+            page,
+            data: results, // Paginated invoices
+        };
+    } catch (error) {
+        throw new Error(`Database Error: ${error.message}`);
+    }
+};
 
 
 const getAllInvoicesByAgent = async (store_id, agent_id, searchTerm = "", limit = 100, page = 1) => {
     try {
-        limit = parseInt(limit) || 100; // Default limit
-        const offset = (parseInt(page) - 1) * limit; // Calculate offset for pagination
+        limit = parseInt(limit) || 100;
+        const offset = (parseInt(page) - 1) * limit;
+
+
         // Construct search query
         const searchTermQuery = searchTerm
             ? `AND (i.invoice_number LIKE ? OR
@@ -463,43 +513,6 @@ WHERE i.store_id = ? AND i.id = ?;
         throw new Error(`Database Error: ${error.message}`);
     }
 }
-// Get invoice product details
-// const getInvoiceProductDetails = async (store_id, invoice_id, product_id) => {
-//     try {
-//         const query = `
-//     SELECT s.* ,
-//      COALESCE(
-//         JSON_ARRAYAGG(
-//             CASE 
-//                 WHEN r.product_id IS NOT NULL THEN JSON_OBJECT(
-//                     'product_id', r.product_id,
-//                     'return_quantity', r.return_quantity,
-//                     'return_amount', r.return_amount,
-//                     'reason', r.reason,
-//                     'return_date', r.return_date
-//                 )
-//                 ELSE NULL 
-//             END
-//         ), JSON_ARRAY()
-//     ) AS returns
-//     FROM sales s
-//     LEFT JOIN return_items r ON (s.invoice_id = r.invoice_id)
-//     WHERE ( s.store_id = ? AND s.invoice_id = ? AND s.product_id)
-//     `;
-
-//         const [results] = await db.query(query, [store_id, invoice_id, product_id]);
-
-//         if (results.affectedRows === 0) {
-//             return ({ success: false, error: 'Something went wrong!' });
-//         }
-
-//         return results;
-//     } catch (error) {
-//         throw new Error(`Database Error: ${error.message}`);
-//     }
-// }
-
-
 const getInvoiceProductDetails = async (store_id, invoice_id, product_id) => {
     try {
         const query = `
@@ -546,4 +559,5 @@ module.exports = {
     getAllInvoicesByCustomer,
     getAllUnpaidInvoicesByCustomer,
     getInvoiceProductDetails,
+    getAllInvoicesAdmin,
 };

@@ -62,7 +62,6 @@ const findByInvoiceId = async (id, store_id) => {
     `;
     try {
         const [results] = await db.query(sql, [store_id, id]);
-        console.log("results", results);
         return results;
     } catch (error) {
         throw new Error(`Database Error: ${error.message}`);
@@ -108,7 +107,6 @@ const deleteById = async (id, store_id) => {
 
     try {
         const [results] = await db.query(sql, [id]);
-        console.log("results", results);
 
         if (results.affectedRows === 0) {
             console.log("affectedRows");

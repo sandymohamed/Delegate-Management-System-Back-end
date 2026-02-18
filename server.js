@@ -5,7 +5,6 @@ const cors = require('cors');
 
 const port = 8800;
 
-
 const authRoutes = require('./src/routes/auth.routes');
 const usersRoutes = require('./src/routes/users.routes');
 const customersRoutes = require('./src/routes/customers.routes');
@@ -29,6 +28,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
 
+
 // Use routes
 app.use('/auth', authRoutes);
 app.use('/users', usersRoutes);
@@ -48,6 +48,7 @@ app.get('/', (req, res) => res.send('Hello World!'));
 
 
 app.listen(port, () => console.log(`Example app listening at http://localhost:8800`));
+
 
 
 

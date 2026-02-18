@@ -233,10 +233,10 @@ const CustomerModel = require('../models/customers.model');
 
 
 
+// TODO: review payment cycle
 const addPayment = async (invoice_id, store_id, amount, user_id) => {
     const connection = await db.getConnection();
     await connection.beginTransaction(); // Start transaction
-
     try {
 
         // ✅ Fetch invoice & customer details concurrently
@@ -253,6 +253,8 @@ const addPayment = async (invoice_id, store_id, amount, user_id) => {
 
         // ✅ Direct Payment Case
         if (!invoice.is_paid && Number(amount) <= Number(invoice.total_unpaid)) {
+            console.log("innn");
+
             const paymentQuery = `
                 INSERT INTO payments (invoice_id, store_id, payment_date, amount, user_id)
                 VALUES (?, ?, NOW(), ?, ?)
@@ -265,7 +267,7 @@ const addPayment = async (invoice_id, store_id, amount, user_id) => {
 
             await connection.commit();
             connection.release();
-            return { success: true, message: "Payment added successfully!" };
+            return { success: true, message: "1.Payment added successfully!" };
         }
 
         // ✅ Distribute Payment Across Unpaid Invoices
@@ -307,7 +309,7 @@ const addPayment = async (invoice_id, store_id, amount, user_id) => {
         }
         await connection.commit();
         connection.release();
-        return { success: true, message: "Payment added successfully!" };
+        return { success: true, message: "2.Payment added successfully!" };
 
     } catch (error) {
         await connection.rollback();
@@ -315,6 +317,7 @@ const addPayment = async (invoice_id, store_id, amount, user_id) => {
         throw new Error(`Database Error: ${error.message}`);
     }
 };
+
 const addPaymentForCustomer = async (customer_id, store_id, amount, user_id) => {
     const connection = await db.getConnection();
     await connection.beginTransaction(); // Start transaction
@@ -365,6 +368,7 @@ const addPaymentForCustomer = async (customer_id, store_id, amount, user_id) => 
         throw new Error(`Database Error: ${error.message}`);
     }
 };
+
 
 // last one:
 // const updateInvoicePayment = async (invoice_id, amount) => {
